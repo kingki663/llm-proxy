@@ -14,6 +14,11 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
+    - name: Install SSH client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openssh-client
+  
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -51,11 +56,6 @@ jobs:
         echo "Server IP: $ip_address"
         echo "ip_address=$ip_address" >> $GITHUB_ENV
 
-    - name: Install SSH client
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openssh-client
-  
     - name: Set up and run Flask app on Vultr
       uses: appleboy/ssh-action@master
       with:
@@ -63,6 +63,7 @@ jobs:
         username: root
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
+        timeout: 120s
         script: |
           tmux new -s llm-proxy
 
