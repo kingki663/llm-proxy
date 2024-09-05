@@ -1,0 +1,88 @@
+name: Deploy to Vultr
+
+on:
+  workflow_dispatch:  # Allows manual triggering of the workflow
+  push:
+    branches:
+      - run  # Change this to your default branch if different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Create Vultr Server
+      id: create_server
+      run: |
+        # Create a new Vultr instance using the Vultr API
+        response=$(curl -s -X POST https://api.vultr.com/v2/instances \
+          -H "Authorization: Bearer ${{ secrets.VULTR_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "region": "ewr",                  # Change to your desired region
+                "plan": "vc2-1c-1gb",            # Change to your desired plan
+                "os_id": 387,                    # Ubuntu 20.04 LTS x64
+                "sshkey_id": ["your_ssh_key_id"], # Replace with your actual SSH key ID from Vultr
+                "label": "flask-app-server"
+              }')
+        echo "Response: $response"
+        instance_id=$(echo $response | jq -r '.instance.id')
+        echo "Instance ID: $instance_id"
+
+        # Wait for the server to be ready
+        while true; do
+          status=$(curl -s -X GET https://api.vultr.com/v2/instances/$instance_id \
+            -H "Authorization: Bearer ${{ secrets.VULTR_API_KEY }}" | jq -r '.instance.status')
+          echo "Current status: $status"
+          if [[ "$status" == "active" ]]; then
+            break
+          fi
+          sleep 10
+        done
+
+        # Get the server's IP address
+        ip_address=$(curl -s -X GET https://api.vultr.com/v2/instances/$instance_id \
+          -H "Authorization: Bearer ${{ secrets.VULTR_API_KEY }}" | jq -r '.instance.main_ip')
+        echo "Server IP: $ip_address"
+        echo "ip_address=$ip_address" >> $GITHUB_ENV
+
+    - name: Set up and run Flask app on Vultr
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        ssh -o StrictHostKeyChecking=no root@${{ env.ip_address }} << 'EOF'
+        # Update and install dependencies
+        apt-get update
+        apt-get install -y python3-pip python3-venv
+
+        # Clone the repository
+        git clone https://github.com/${{ github.repository }} app
+        cd app
+
+        # Set up virtual environment and install dependencies
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install -r requirements.txt
+
+        # Set environment variables
+        export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        export GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+        export GEMINI_API_URL=${{ secrets.GEMINI_API_URL }}
+        export API_ACCESS_KEY=${{ secrets.API_ACCESS_KEY }}
+        export DEFAULT_OPENAI_MODEL=${{ secrets.DEFAULT_OPENAI_MODEL }}
+        export DEFAULT_GEMINI_MODEL=${{ secrets.DEFAULT_GEMINI_MODEL }}
+
+        # Run the Flask application with Gunicorn
+        gunicorn -w 4 -b 0.0.0.0:5000 proxy:app --daemon
+        EOF
+
+    - name: Output Server IP
+      run: echo "Your Flask app is running at http://${{ env.ip_address }}:5000"

@@ -1,0 +1,107 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+venv*/  # To cover multiple virtual environment names
+*.egg-info/
+.dist-info/
+eggs/
+*.egg
+build/
+develop-eggs/
+.installed.cfg
+*.egg-info/
+*.eggs-info/
+*.whl
+wheelhouse/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Translations
+*.mo
+*.pot
+
+# Flask cache and logs
+instance/
+.webassets-cache
+*.log
+*.bak
+*.log.*
+logs/
+*.out
+
+# dotenv environment variable files
+.env
+.env.*
+
+# PyCharm
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# Cython debug symbols
+cython_debug/
+
+# Database files
+*.sqlite3
+*.db
+
+# MacOS files
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
