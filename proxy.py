@@ -12,10 +12,10 @@ app = Flask(__name__)
 # Environment variables
 openai_api_key = os.getenv('OPENAI_API_KEY')
 default_openai_model = os.getenv('DEFAULT_OPENAI_MODEL')
-openai_api_url = os.getenv('OPENAI_API_URL', 'https://api.openai.com/v1')
+openai_api_url = os.getenv('OPENAI_API_URL')
 gemini_api_key = os.getenv('GEMINI_API_KEY')
 gemini_api_url = os.getenv('GEMINI_API_URL')
-default_gemini_model = os.getenv('DEFAULT_GEMINI_MODEL', 'gemini-1.5-flash-latest')
+default_gemini_model = os.getenv('DEFAULT_GEMINI_MODEL')
 api_access_key = os.getenv('API_ACCESS_KEY')
 port = int(os.getenv('PORT', 5000))
 
