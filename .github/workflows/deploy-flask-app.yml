@@ -1,10 +1,10 @@
 name: Deploy to Vultr
 
 on:
-  workflow_dispatch:  # Allows manual triggering of the workflow
+  workflow_dispatch:
   push:
     branches:
-      - run  # Change this to your default branch if different
+      - run
 
 jobs:
   deploy:
@@ -14,11 +14,6 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    - name: Install SSH client
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y openssh-client
-  
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -35,7 +30,7 @@ jobs:
         echo "Response: $response"
         instance_id=$(echo $response | jq -r '.instance.id')
         echo "Instance ID: $instance_id"
-
+        
         # Wait for the server to be ready
         while true; do
           status=$(curl -s -X GET https://api.vultr.com/v2/instances/$instance_id \
@@ -46,10 +41,10 @@ jobs:
           fi
           sleep 10
         done
-
+        
         # Additional wait to ensure SSH readiness
-        sleep 120  # Wait 1 minute to ensure SSH service is up
-
+        sleep 120  # Wait 2 minutes to ensure SSH service is up
+        
         # Get the server's IP address
         ip_address=$(curl -s -X GET https://api.vultr.com/v2/instances/$instance_id \
           -H "Authorization: Bearer ${{ secrets.VULTR_API_KEY }}" | jq -r '.instance.main_ip')
@@ -57,7 +52,7 @@ jobs:
         echo "ip_address=$ip_address" >> $GITHUB_ENV
 
     - name: Set up and run Flask app on Vultr
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v0.1.1
       with:
         host: ${{ env.ip_address }}
         username: root
@@ -65,43 +60,45 @@ jobs:
         port: 22
         timeout: 120s
         script: |
-          tmux new -s llm-proxy
-
+          #!/bin/bash
+          set -e  # Exit on any error
+          
           # Update and install dependencies
           apt-get update
           apt-get install -y python3-pip python3-venv apt-transport-https ca-certificates curl software-properties-common
-
+          
           # Install Docker
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
           add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
           apt-get update
           apt-get install -y docker-ce
           systemctl start docker
           systemctl enable docker
-  
+          
           # Clone the repository
           git clone https://github.com/${{ github.repository }} app
           cd app
-  
+          
           # Set up virtual environment and install dependencies
           python3 -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
-  
+          
           # Set environment variables
-          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-          export GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          export OPENAI_API_URL=${{ secrets.GEMINI_API_URL }}
-          export GEMINI_API_URL=${{ secrets.GEMINI_API_URL }}
-          export API_ACCESS_KEY=${{ secrets.API_ACCESS_KEY }}
-          export DEFAULT_OPENAI_MODEL=${{ secrets.DEFAULT_OPENAI_MODEL }}
-          export DEFAULT_GEMINI_MODEL=${{ secrets.DEFAULT_GEMINI_MODEL }}
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> /etc/environment
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> /etc/environment
+          echo "OPENAI_API_URL=${{ secrets.OPENAI_API_URL }}" >> /etc/environment
+          echo "GEMINI_API_URL=${{ secrets.GEMINI_API_URL }}" >> /etc/environment
+          echo "API_ACCESS_KEY=${{ secrets.API_ACCESS_KEY }}" >> /etc/environment
+          echo "DEFAULT_OPENAI_MODEL=${{ secrets.DEFAULT_OPENAI_MODEL }}" >> /etc/environment
+          echo "DEFAULT_GEMINI_MODEL=${{ secrets.DEFAULT_GEMINI_MODEL }}" >> /etc/environment
+          source /etc/environment
           
           # Run the Docker command with cloudflared
           docker run -d --network=host cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
-  
-          # Run the Flask application with Gunicorn
-          gunicorn -w 4 -b localhost:${{ secrets.PORT }} proxy:app
+          
+          # Run the Flask application with Gunicorn using tmux
+          tmux new -d -s llm-proxy 'gunicorn -w 4 -b localhost:${{ secrets.PORT }} proxy:app'
 
     - name: Output Server IP
-      run: echo "Your Flask app is running at http://${{ env.ip_address }}:${{ secrets.PORT }}"
+      run: echo "Your Flask app is running via Cloudflare Tunnel."
