@@ -95,7 +95,7 @@ jobs:
           source /etc/environment
           
           # Run the Docker command with cloudflared
-          docker run -d --network=host cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          # docker run -d --network=host cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
           
           # Run the Flask application with Gunicorn using tmux
           tmux new -d -s llm-proxy 'gunicorn -w 4 -b localhost:${{ secrets.PORT }} proxy:app'
