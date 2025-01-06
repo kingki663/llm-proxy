@@ -41,6 +41,7 @@ def api_key_required(f):
 
 # OpenAI API endpoint
 @app.route('/api/openai', methods=['POST'])
+@app.route('/api/openai/chat/completions', methods=['POST']) # 支持使用openai库进行请求
 @api_key_required
 def openai_proxy():
     model = request.json.get('model', default_openai_model)
@@ -70,37 +71,6 @@ def openai_proxy():
         logger.critical(f"Unhandled exception occurred: {err}")
         return jsonify(error='Internal Server Error', message=str(err)), 500
       
-# OpenAI API endpoint 支持使用openai库进行请求
-@app.route('/api/openai/chat/completions', methods=['POST'])
-@api_key_required
-def openai_proxy():
-    model = request.json.get('model', default_openai_model)
-    url = f'{openai_api_url}/chat/completions' if model.startswith('gpt-') else f'{openai_api_url}/engines/{model}/completions'
-    
-    logger.info(f"Received request for OpenAI model: {model} from IP: {request.remote_addr}")
-
-    try:
-        response = requests.post(
-            url,
-            json={**request.json, 'model': model},
-            headers={
-                'Authorization': f'Bearer {openai_api_key}',
-                'Content-Type': 'application/json'
-            }
-        )
-        response.raise_for_status()
-        logger.info(f"Request to OpenAI API successful with status: {response.status_code}")
-        return jsonify(response.json()), response.status_code
-    except requests.exceptions.HTTPError as http_err:
-        logger.error(f"HTTP error occurred: {http_err}")
-        return jsonify(error='HTTP Error', message=str(http_err)), response.status_code
-    except requests.exceptions.RequestException as req_err:
-        logger.error(f"Request exception occurred: {req_err}")
-        return jsonify(error='Service Unavailable', message=str(req_err)), 503
-    except Exception as err:
-        logger.critical(f"Unhandled exception occurred: {err}")
-        return jsonify(error='Internal Server Error', message=str(err)), 500
-
 # Gemini API endpoint
 @app.route('/v1/generate', methods=['POST'])
 @api_key_required
